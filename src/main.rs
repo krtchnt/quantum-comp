@@ -76,3 +76,89 @@ fn main() {
     println!("{register}");
     println!("\nResult: Sum=1, Carry-out=1. Correct. ✅");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::register::Register;
+    use num_complex::Complex;
+
+    /// A simple classical full adder function for verification.
+    fn full_adder_classical(a: u8, b: u8, c_in: u8) -> (u8, u8) {
+        let sum = a ^ b ^ c_in;
+        let carry = (a & b) | (c_in & (a ^ b));
+        (sum, carry)
+    }
+
+    /// Helper function to set up and run a test case.
+    fn run_single_test_case(a_val: u8, b_val: u8, c_in_val: u8) {
+        // Determine the expected classical output
+        let (sum_expected, carry_expected) = full_adder_classical(a_val, b_val, c_in_val);
+
+        // Calculate the initial state index based on the inputs |A,B,C_in,0⟩
+        let initial_state_index =
+            (a_val as usize) * 8 + (b_val as usize) * 4 + (c_in_val as usize) * 2;
+
+        // Create a 4-qubit register initialized to the initial state
+        let mut amplitudes = vec![Complex::new(0.0, 0.0); 16];
+        amplitudes[initial_state_index] = Complex::new(1.0, 0.0);
+        let mut register = unsafe { Register::new_unchecked(amplitudes) };
+
+        // Apply the full adder circuit
+        full_adder(&mut register);
+
+        // The final state should be |A,B,S,C_out⟩.
+        let final_state_index = (a_val as usize) * 8
+            + (b_val as usize) * 4
+            + (sum_expected as usize) * 2
+            + (carry_expected as usize);
+
+        // Check if the amplitude at the expected final state is 1.0 (within a small tolerance)
+        let is_correct = register.measure() == final_state_index;
+
+        assert!(
+            is_correct,
+            "Test case failed for A={a_val}, B={b_val}, C_in={c_in_val}. Expected final state index {final_state_index}, but found amplitude at {final_state_index}. Final state: {register}"
+        );
+    }
+
+    #[test]
+    fn test_000() {
+        run_single_test_case(0, 0, 0);
+    }
+
+    #[test]
+    fn test_001() {
+        run_single_test_case(0, 0, 1);
+    }
+
+    #[test]
+    fn test_010() {
+        run_single_test_case(0, 1, 0);
+    }
+
+    #[test]
+    fn test_011() {
+        run_single_test_case(0, 1, 1);
+    }
+
+    #[test]
+    fn test_100() {
+        run_single_test_case(1, 0, 0);
+    }
+
+    #[test]
+    fn test_101() {
+        run_single_test_case(1, 0, 1);
+    }
+
+    #[test]
+    fn test_110() {
+        run_single_test_case(1, 1, 0);
+    }
+
+    #[test]
+    fn test_111() {
+        run_single_test_case(1, 1, 1);
+    }
+}
