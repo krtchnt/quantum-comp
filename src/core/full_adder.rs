@@ -61,8 +61,16 @@ mod tests {
         (sum, carry)
     }
 
-    /// Helper function to set up and run a test case.
-    fn run_single_test_case(a_val: u8, b_val: u8, c_in_val: u8) {
+    #[rstest]
+    #[case(0, 0, 0)]
+    #[case(0, 0, 1)]
+    #[case(0, 1, 0)]
+    #[case(0, 1, 1)]
+    #[case(1, 0, 0)]
+    #[case(1, 0, 1)]
+    #[case(1, 1, 0)]
+    #[case(1, 1, 1)]
+    fn test_add(#[case] a_val: u8, #[case] b_val: u8, #[case] c_in_val: u8) {
         // Determine the expected classical output
         let (sum_expected, carry_expected) = full_adder_classical(a_val, b_val, c_in_val);
 
@@ -89,18 +97,5 @@ mod tests {
             is_correct,
             "Test case failed for A={a_val}, B={b_val}, C_in={c_in_val}. Expected final state index {final_state_index}, but found amplitude at {final_state_index}. Final state: {register}"
         );
-    }
-
-    #[rstest]
-    #[case(0, 0, 0)]
-    #[case(0, 0, 1)]
-    #[case(0, 1, 0)]
-    #[case(0, 1, 1)]
-    #[case(1, 0, 0)]
-    #[case(1, 0, 1)]
-    #[case(1, 1, 0)]
-    #[case(1, 1, 1)]
-    fn test_000(#[case] a: u8, #[case] b: u8, #[case] c_in: u8) {
-        run_single_test_case(a, b, c_in);
     }
 }
