@@ -325,7 +325,7 @@ impl<T: Clone + Num + ConstZero> Qubit<T> {
     /// ```
     ///
     /// Conceptually:
-    /// ```
+    /// ```text
     /// |q⟩ ⊗ |ψ⟩ = [α, β] ⊗ [r₀, r₁, ..., rₖ₋₁]
     ///            = [αr₀, αr₁, ..., αrₖ₋₁, βr₀, βr₁, ..., βrₖ₋₁]
     /// ```

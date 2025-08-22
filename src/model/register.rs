@@ -1,5 +1,5 @@
 use std::{
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     ops::AddAssign,
     slice::Iter,
     vec::IntoIter,
@@ -68,7 +68,7 @@ impl<'a, T> IntoIterator for &'a Register<T> {
     }
 }
 
-impl<T: Clone + Signed + Float + AddAssign> Register<T> {
+impl<T: Clone + Signed + Float + AddAssign + Debug> Register<T> {
     /// Creates a new `Register` from an iterator of complex amplitudes,
     /// returning `None` if the amplitudes are not normalised.
     ///
@@ -82,7 +82,7 @@ impl<T: Clone + Signed + Float + AddAssign> Register<T> {
     ///
     /// ```
     /// use num_complex::Complex;
-    /// use quantum_register::Register;
+    /// use quantum_comp::model::register::Register;
     ///
     /// // A valid quantum state
     /// let amplitudes = vec![
@@ -96,12 +96,41 @@ impl<T: Clone + Signed + Float + AddAssign> Register<T> {
     /// assert!(Register::new(amplitudes).is_none());
     /// ```
     pub fn new(amplitudes: impl IntoIterator<Item = Complex<T>>) -> Option<Self> {
+        // 2ϵ is more appropriately forgiving than ϵ
+        let epsilon = T::epsilon() + T::epsilon();
         let mut total_prob = T::zero();
         let res = amplitudes
             .into_iter()
             .inspect(|x| total_prob += x.norm_sqr())
             .collect();
-        ((total_prob - T::one()).abs() < T::epsilon()).then_some(Self(res))
+        ((total_prob - T::one()).abs() < epsilon).then_some(Self(res))
+    }
+}
+
+impl<T: Float> Register<T> {
+    /// Constructs a `Register` representing a single basis state.
+    ///
+    /// The function creates a quantum state with an amplitude of magnitude 1
+    /// at a specified `index`, and an amplitude of 0 for all other indices.
+    /// The phase of the complex amplitude at the given index can be set using
+    /// the `angle` parameter.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `index` is out of bounds for the specified number of
+    /// qubits.
+    pub fn from_basis_state(num_qubits: u8, index: usize, angle: T) -> Self {
+        let size = 1_usize << num_qubits;
+        assert!(index < size, "Basis state index is out of bounds");
+
+        let mut amplitudes = vec![Complex::zero(); size];
+        amplitudes[index] = Complex::from_polar(T::one(), angle);
+
+        // SAFETY: The `from_basis_state` function ensures that only a single amplitude
+        // is non-zero and has a magnitude of 1. All other amplitudes are zero.
+        // The sum of the squared magnitudes is therefore `1.0.norm_sqr()` which is `1.0`.
+        // This satisfies the `Register` normalization invariant.
+        unsafe { Self::new_unchecked(amplitudes) }
     }
 }
 
@@ -123,13 +152,15 @@ impl<T> Register<T> {
     /// # Examples
     ///
     /// ```
+    /// use std::f64::consts::FRAC_1_SQRT_2;
+    ///
     /// use num_complex::Complex;
-    /// use quantum_register::Register;
+    /// use quantum_comp::model::register::Register;
     ///
     /// // The amplitudes are known to be normalised.
     /// let amplitudes = vec![
-    ///     Complex::new(1.0 / 2.0_f64.sqrt(), 0.0),
-    ///     Complex::new(1.0 / 2.0_f64.sqrt(), 0.0),
+    ///     Complex::new(FRAC_1_SQRT_2, 0.0),
+    ///     Complex::new(FRAC_1_SQRT_2, 0.0),
     /// ];
     /// let register = unsafe { Register::new_unchecked(amplitudes) };
     /// ```
@@ -156,12 +187,12 @@ impl<T: Clone + Num + ConstZero> Register<T> {
     /// ```
     ///
     /// Conceptually:
-    /// ```
+    /// ```text
     /// |ψ⟩ (size k) ⊗ |q⟩ = [r₀, r₁, ..., rₖ₋₁] ⊗ [γ, δ]
     ///                   = [r₀γ, r₁γ, ..., rₖ₋₁γ, r₀δ, r₁δ, ..., rₖ₋₁δ]
     /// ```
     ///
-    /// ```
+    /// ```text
     /// ||ψ ⊗ φ||² = ||ψ||² * ||φ||² = 1 * 1 = 1
     /// ```
     #[must_use]
@@ -202,7 +233,7 @@ impl<T: Clone + Num> Register<T> {
     /// ```
     ///
     /// Conceptually:
-    /// ```
+    /// ```text
     /// |ψ⟩ ⊗ |φ⟩ = Σ_i Σ_j aᵢ bⱼ |i⟩|j⟩
     /// ```
     #[must_use]
@@ -434,7 +465,7 @@ where
     ///
     /// ```
     /// use num_complex::Complex;
-    /// use quantum_register::Register;
+    /// use quantum_comp::model::register::Register;
     ///
     /// let amplitudes = vec![
     ///     Complex::new(1.0 / 2.0_f64.sqrt(), 0.0),

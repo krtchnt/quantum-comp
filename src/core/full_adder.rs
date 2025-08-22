@@ -1,8 +1,4 @@
-pub mod model;
-
-use num_complex::Complex;
-
-use crate::model::register::Register; // Assuming a crate structure
+use crate::model::register::Register;
 
 /// Applies the quantum full adder circuit to a 4-qubit register.
 ///
@@ -10,10 +6,19 @@ use crate::model::register::Register; // Assuming a crate structure
 /// `C_in` are the input bits. After the operation, the register will be in the
 /// state |A, B, S, `C_out`⟩, where S is the sum and `C_out` is the carry-out.
 ///
+/// The quantum circuit is laid out like so:
+///
+/// ```text
+/// |   A⟩ -*-*-----*- |A    ⟩
+/// |   B⟩ -*-*-*-*-⊕- |B    ⟩
+/// |C_in⟩ -----*-⊕--- |S    ⟩
+/// |   0⟩ -⊕---⊕----- |C_out⟩
+/// ```
+///
 /// # Panics
 ///
 /// Panics if the register does not contain at least 4 qubits (16 amplitudes).
-fn full_adder(register: &mut Register<f64>) {
+pub fn full_adder(register: &mut Register<f64>) {
     assert_eq!(register.len(), 16, "Register must have 4 qubits.");
 
     // Qubit indices based on the mapping: A=3, B=2, C_in=1, C_out=0
@@ -43,45 +48,11 @@ fn full_adder(register: &mut Register<f64>) {
     register.cnot(a, b);
 }
 
-fn main() {
-    // --- Test Case: 1 + 1 + 1 ---
-    let a_val = 1;
-    let b_val = 1;
-    let c_in_val = 1;
-
-    // Expected result: Sum = 1, Carry-out = 1
-
-    // The initial state is |A,B,C_in,C_out⟩ = |1110⟩.
-    // The state vector index is calculated as 8*A + 4*B + 2*C_in + 1*C_out.
-    let initial_state_index = a_val * 8 + b_val * 4 + c_in_val * 2; // -> 14
-
-    // Create a 4-qubit register (2^4 = 16 states) initialized to |1110⟩.
-    let mut amplitudes = vec![Complex::new(0.0, 0.0); 16];
-    amplitudes[initial_state_index] = Complex::new(1.0, 0.0);
-    let mut register = unsafe { Register::new_unchecked(amplitudes) };
-
-    println!("Quantum Full Adder Test");
-    println!("-------------------------");
-    println!("Inputs: A={a_val}, B={b_val}, C_in={c_in_val}");
-    println!("\nInitial Register State |A,B,C_in,0⟩:");
-    println!("{register}");
-
-    // Apply the full adder circuit
-    full_adder(&mut register);
-
-    // The final state should be |A,B,S,C_out⟩ = |1,1,1,1⟩.
-    // The state vector index is 8*A + 4*B + 2*S + 1*C_out.
-    // -> 8*1 + 4*1 + 2*1 + 1*1 = 15
-    println!("\nFinal Register State |A,B,S,C_out⟩:");
-    println!("{register}");
-    println!("\nResult: Sum=1, Carry-out=1. Correct. ✅");
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::register::Register;
-    use num_complex::Complex;
+    use rstest::rstest;
 
     /// A simple classical full adder function for verification.
     fn full_adder_classical(a: u8, b: u8, c_in: u8) -> (u8, u8) {
@@ -100,9 +71,7 @@ mod tests {
             (a_val as usize) * 8 + (b_val as usize) * 4 + (c_in_val as usize) * 2;
 
         // Create a 4-qubit register initialized to the initial state
-        let mut amplitudes = vec![Complex::new(0.0, 0.0); 16];
-        amplitudes[initial_state_index] = Complex::new(1.0, 0.0);
-        let mut register = unsafe { Register::new_unchecked(amplitudes) };
+        let mut register = Register::from_basis_state(4, initial_state_index, 0.);
 
         // Apply the full adder circuit
         full_adder(&mut register);
@@ -122,43 +91,16 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_000() {
-        run_single_test_case(0, 0, 0);
-    }
-
-    #[test]
-    fn test_001() {
-        run_single_test_case(0, 0, 1);
-    }
-
-    #[test]
-    fn test_010() {
-        run_single_test_case(0, 1, 0);
-    }
-
-    #[test]
-    fn test_011() {
-        run_single_test_case(0, 1, 1);
-    }
-
-    #[test]
-    fn test_100() {
-        run_single_test_case(1, 0, 0);
-    }
-
-    #[test]
-    fn test_101() {
-        run_single_test_case(1, 0, 1);
-    }
-
-    #[test]
-    fn test_110() {
-        run_single_test_case(1, 1, 0);
-    }
-
-    #[test]
-    fn test_111() {
-        run_single_test_case(1, 1, 1);
+    #[rstest]
+    #[case(0, 0, 0)]
+    #[case(0, 0, 1)]
+    #[case(0, 1, 0)]
+    #[case(0, 1, 1)]
+    #[case(1, 0, 0)]
+    #[case(1, 0, 1)]
+    #[case(1, 1, 0)]
+    #[case(1, 1, 1)]
+    fn test_000(#[case] a: u8, #[case] b: u8, #[case] c_in: u8) {
+        run_single_test_case(a, b, c_in);
     }
 }
