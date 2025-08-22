@@ -95,7 +95,9 @@ mod tests {
 
         assert!(
             is_correct,
-            "Test case failed for A={a_val}, B={b_val}, C_in={c_in_val}. Expected final state index {final_state_index}, but found amplitude at {final_state_index}. Final state: {register}"
+            "Test case failed for A={a_val}, B={b_val}, C_in={c_in_val}. \
+            Expected final state index {final_state_index}, \
+            but found amplitude at {final_state_index}. Final state: {register}"
         );
     }
 }
